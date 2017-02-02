@@ -7,7 +7,7 @@ class LruRedux::Cache
     @max_size = size
     if @max_size < @data.size
       @data.keys[0..@max_size-@data.size].each do |k|
-        @data.delete(k)
+        evict_one(k)
       end
     end
   end
@@ -20,7 +20,7 @@ class LruRedux::Cache
     else
       result = @data[key] = yield
       # this may seem odd see: http://bugs.ruby-lang.org/issues/8312
-      @data.delete(@data.first[0]) if @data.length > @max_size
+      evict_one(@data.first[0]) if @data.length > @max_size
       result
     end
   end
@@ -29,7 +29,7 @@ class LruRedux::Cache
     @data.delete(key)
     @data[key] = val
     # this may seem odd see: http://bugs.ruby-lang.org/issues/8312
-    @data.delete(@data.first[0]) if @data.length > @max_size
+    evict_one(@data.first[0]) if @data.length > @max_size
     val
   end
 

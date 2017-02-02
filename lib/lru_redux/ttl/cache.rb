@@ -55,8 +55,7 @@ module LruRedux
           if @data_lru.size > @max_size
             key, _ = @data_lru.first
 
-            @data_ttl.delete(key)
-            @data_lru.delete(key)
+            evict_one(key)
           end
 
           result
@@ -99,8 +98,7 @@ module LruRedux
         if @data_lru.size > @max_size
           key, _ = @data_lru.first
 
-          @data_ttl.delete(key)
-          @data_lru.delete(key)
+          evict_one(key)
         end
 
         val
@@ -128,6 +126,7 @@ module LruRedux
       def delete(key)
         ttl_evict
 
+        # no evict callback call for explict delete
         @data_lru.delete(key)
         @data_ttl.delete(key)
       end
@@ -155,6 +154,10 @@ module LruRedux
         @data_lru.size
       end
 
+      def register_evict_callback(callback = nil, &block)
+        @on_evict = block_given? ? block : callback
+      end
+
       protected
 
       # for cache validation only, ensures all is sound
@@ -169,8 +172,7 @@ module LruRedux
         key, time = @data_ttl.first
 
         until time.nil? || time > ttl_horizon
-          @data_ttl.delete(key)
-          @data_lru.delete(key)
+          evict_one(key)
 
           key, time = @data_ttl.first
         end
@@ -182,9 +184,15 @@ module LruRedux
         while @data_lru.size > @max_size
           key, _ = @data_lru.first
 
-          @data_ttl.delete(key)
-          @data_lru.delete(key)
+          evict_one(key)
         end
+      end
+
+      def evict_one(key)
+        @data_ttl.delete(key)
+        value = @data_lru.delete(key)
+        @on_evict.call(key, value) if @on_evict
+        value
       end
     end
   end

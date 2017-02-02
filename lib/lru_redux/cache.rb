@@ -18,7 +18,7 @@ class LruRedux::Cache
 
     @max_size = max_size
 
-    @data.shift while @data.size > @max_size
+    evict_one(@data.first[0]) while @data.size > @max_size
   end
 
   def ttl=(_)
@@ -32,7 +32,7 @@ class LruRedux::Cache
       @data[key] = value
     else
       result = @data[key] = yield
-      @data.shift if @data.length > @max_size
+      evict_one(@data.first[0]) if @data.length > @max_size
       result
     end
   end
@@ -60,7 +60,7 @@ class LruRedux::Cache
   def []=(key,val)
     @data.delete(key)
     @data[key] = val
-    @data.shift if @data.length > @max_size
+    evict_one(@data.first[0]) if @data.length > @max_size
     val
   end
 
@@ -80,6 +80,7 @@ class LruRedux::Cache
   end
 
   def delete(key)
+    # no evict callback call for explict delete
     @data.delete(key)
   end
 
@@ -99,10 +100,19 @@ class LruRedux::Cache
     @data.size
   end
 
+  def register_evict_callback(callback = nil, &block)
+    @on_evict = block_given? ? block : callback
+  end
+
   protected
 
   # for cache validation only, ensures all is sound
   def valid?
     true
+  end
+
+  def evict_one(key)
+    value = @data.delete(key)
+    @on_evict.call(key, value) if @on_evict
   end
 end
