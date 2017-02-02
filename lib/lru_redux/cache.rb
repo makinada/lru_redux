@@ -79,6 +79,11 @@ class LruRedux::Cache
     array.reverse!
   end
 
+  def values
+    vals = @data.values
+    vals.reverse!
+  end
+
   def delete(key)
     # no evict callback call for explict delete
     @data.delete(key)
